@@ -13,6 +13,8 @@ app.use(cookieParser());
 const clientId = process.env.CLIENT_ID as string;
 const clientSecret = process.env.CLIENT_SECRET as string;
 const redirectUri = process.env.REDIRECT_URI as string;
+const hostUrl = process.env.HOST_URL as string;
+const port = parseInt(process.env.PORT as string);
 const scope =
   "user-read-private user-read-email user-read-recently-played playlist-modify-public playlist-modify-private";
 
@@ -38,14 +40,14 @@ discordClient.on("messageCreate", async (message) => {
   if (message.author.bot) return;
   if (!message.channel.isDMBased()) return;
   message.channel.send(
-    `Hi! I'm Song A Day 2024, and my job is to make you a playlist that takes you back to your most listened songs of the year :)\nIf you're new, **I'll need access to your recent listening history, you can do that by clicking here:** http://localhost:8080/authorise?discord=${message.author.id}`
+    `Hi! I'm Song A Day 2024, and my job is to make you a playlist that takes you back to your most listened songs of the year :)\nIf you're new, **I'll need access to your recent listening history, you can do that by clicking here:** ${hostUrl}/authorise?discord=${message.author.id}`
   );
 });
 
 discordClient.on("guildMemberAdd", async (member) => {
   if (member.user.bot) return;
   member.send(
-    `Welcome to Song A Day 2024! My job is to make you a playlist that takes you back to your most listened songs of the year :)\n**I'll need access to your recent listening history, you can do that by clicking here:** http://localhost:8080/authorise?discord=${member.id}`
+    `Welcome to Song A Day 2024! My job is to make you a playlist that takes you back to your most listened songs of the year :)\n**I'll need access to your recent listening history, you can do that by clicking here:** ${hostUrl}/authorise?discord=${member.id}`
   );
 });
 
@@ -145,7 +147,7 @@ async function updateTracks(
         if (discordId !== null)
           discordClient.users.fetch(discordId).then((user) => {
             user.send(
-              `I couldn't seem to get your recently played tracks :( **Try authorising me again:** http://localhost:8080/authorise?discord=${discordId}`
+              `I couldn't seem to get your recently played tracks :( **Try authorising me again:** ${hostUrl}/authorise?discord=${discordId}`
             );
           });
         return null;
@@ -243,7 +245,7 @@ async function updateTracks(
           if (discordId !== null)
             discordClient.users.fetch(discordId).then((user) => {
               user.send(
-                `I couldn't seem to add to your playlist :( **Try authorising me again:** http://localhost:8080/authorise?discord=${discordId}`
+                `I couldn't seem to add to your playlist :( **Try authorising me again:** ${hostUrl}/authorise?discord=${discordId}`
               );
             });
         });
@@ -270,7 +272,7 @@ async function updateTracks(
           if (discordId !== null)
             discordClient.users.fetch(discordId).then((user) => {
               user.send(
-                `I couldn't seem to add to your playlist :( **Try authorising me again:** http://localhost:8080/authorise?discord=${discordId}`
+                `I couldn't seem to add to your playlist :( **Try authorising me again:** ${hostUrl}/authorise?discord=${discordId}`
               );
             });
         });
@@ -327,7 +329,7 @@ app.get("/callback", function (req, res) {
           if (discordId !== null)
             discordClient.users.fetch(discordId).then((user) => {
               user.send(
-                `I couldn't find your Spotify id :( **Maybe try authorising again?** https://localhost:8080/authorise?discord=${discordId}`
+                `I couldn't find your Spotify id :( **Maybe try authorising again?** ${hostUrl}/authorise?discord=${discordId}`
               );
             });
           return null;
@@ -382,7 +384,7 @@ app.get("/callback", function (req, res) {
             if (discordId !== null)
               discordClient.users.fetch(discordId).then((user) => {
                 user.send(
-                  `I couldn't create the playlist :( **Maybe try again?** https://localhost:8080/authorise?discord=${discordId}`
+                  `I couldn't create the playlist :( **Maybe try again?** ${hostUrl}/authorise?discord=${discordId}`
                 );
               });
             return null;
@@ -437,7 +439,7 @@ app.get("/callback", function (req, res) {
             if (discordId !== null)
               discordClient.users.fetch(discordId).then((user) => {
                 user.send(
-                  `Looks like there was an authorisation problem :( **Maybe try authorising again?** https://localhost:8080/authorise?discord=${discordId}`
+                  `Looks like there was an authorisation problem :( **Maybe try authorising again?** ${hostUrl}/authorise?discord=${discordId}`
                 );
               });
           });
@@ -456,7 +458,7 @@ app.get("/callback", function (req, res) {
       if (discordId !== null)
         discordClient.users.fetch(discordId).then((user) => {
           user.send(
-            `Looks like there was an authorisation problem :( **Maybe try authorising again?** https://localhost:8080/authorise?discord=${discordId}`
+            `Looks like there was an authorisation problem :( **Maybe try authorising again?** ${hostUrl}/authorise?discord=${discordId}`
           );
         });
     });
@@ -490,8 +492,8 @@ app.get("/authorise", function (req, res) {
   );
 });
 
-app.listen(8080, function () {
-  console.log("App listening on port 8080!");
+app.listen(port, function () {
+  console.log(`App listening on port ${port}!`);
 });
 
 // Function to ping Discord user by discordId
@@ -529,7 +531,7 @@ fs.readdir("info", (err, files) => {
 
       discordClient.users.fetch(discordId).then((user) => {
         user.send(
-          `I've just had to restart :/ **Could you authorise me again?** http://localhost:8080/authorise?discord=${discordId}`
+          `I've just had to restart :/ **Could you authorise me again?** ${hostUrl}/authorise?discord=${discordId}`
         );
       });
     });
