@@ -79,6 +79,7 @@ const oneMinute = 1000 * 60;
 async function updateTracks(
   timeout: NodeJS.Timeout | null,
   accessToken: string,
+  refreshToken: string,
   id: string,
   playlistId: string,
   discordId: string | null
@@ -86,6 +87,8 @@ async function updateTracks(
   let tracks: {
     playlist: string;
     discord: string | null;
+    access: string;
+    refresh: string;
     tracks: {
       [id: string]: {
         total: number;
@@ -96,6 +99,8 @@ async function updateTracks(
   } = {
     playlist: playlistId,
     discord: discordId,
+    access: accessToken,
+    refresh: refreshToken,
     tracks: {},
     lastUpdated: Date.parse("2024-01-01T00:00:00"),
   };
@@ -107,6 +112,8 @@ async function updateTracks(
           resolve();
         } else {
           tracks = JSON.parse(data);
+          tracks.access = accessToken;
+          tracks.refresh = refreshToken;
           resolve();
         }
       });
@@ -248,7 +255,9 @@ async function updateTracks(
             },
           }
         )
-        .then((response) => {})
+        .then((response) => {
+          console.log(`Scrobbled ${id}`);
+        })
         .catch((error) => {
           console.error(`${id}: Couldn't replace playlist ${error}`);
           if (timeout !== null) clearInterval(timeout);
@@ -291,6 +300,111 @@ async function updateTracks(
   }
 
   return;
+}
+
+async function scrobble(
+  id: string,
+  playlistId: string,
+  discordId: string | null,
+  accessToken: string,
+  refreshToken: string,
+  res: express.Response | null
+) {
+  axios
+    .post(
+      "https://accounts.spotify.com/api/token",
+      new URLSearchParams({
+        refresh_token: refreshToken ?? "",
+        redirect_uri: redirectUri,
+        grant_type: "refresh_token",
+      }).toString(),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization:
+            "Basic " +
+            new (Buffer as any).from(clientId + ":" + clientSecret).toString(
+              "base64"
+            ),
+        },
+      }
+    )
+    .then(async (response) => {
+      accessToken = response.data.access_token;
+      refreshToken =
+        response.data.refresh_token === undefined
+          ? refreshToken
+          : response.data.refresh_token;
+      await updateTracks(
+        timeout,
+        refreshToken,
+        accessToken,
+        id,
+        playlistId!,
+        discordId
+      );
+    })
+    .catch((error) => {
+      console.error(`${id}: Authorisation error ${error}`);
+      clearInterval(timeout);
+
+      res?.status(401).send("Authorisation error");
+      if (discordId !== null)
+        discordClient.users.fetch(discordId).then((user) => {
+          user.send(
+            `Looks like there was an authorisation problem :( **Maybe try authorising again?** ${hostUrl}/authorise?discord=${discordId}`
+          );
+        });
+    });
+
+  let timeout = setInterval(() => {
+    axios
+      .post(
+        "https://accounts.spotify.com/api/token",
+        new URLSearchParams({
+          refresh_token: refreshToken ?? "",
+          redirect_uri: redirectUri,
+          grant_type: "refresh_token",
+        }).toString(),
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization:
+              "Basic " +
+              new (Buffer as any).from(clientId + ":" + clientSecret).toString(
+                "base64"
+              ),
+          },
+        }
+      )
+      .then(async (response) => {
+        accessToken = response.data.access_token;
+        refreshToken =
+          response.data.refresh_token === undefined
+            ? refreshToken
+            : response.data.refresh_token;
+        await updateTracks(
+          timeout,
+          refreshToken,
+          accessToken,
+          id,
+          playlistId!,
+          discordId
+        );
+      })
+      .catch((error) => {
+        console.error(`${id}: Authorisation error ${error}`);
+        clearInterval(timeout);
+
+        res?.status(401).send("Authorisation error");
+        if (discordId !== null)
+          discordClient.users.fetch(discordId).then((user) => {
+            user.send(
+              `Looks like there was an authorisation problem :( **Maybe try authorising again?** ${hostUrl}/authorise?discord=${discordId}`
+            );
+          });
+      });
+  }, oneMinute * 15);
 }
 
 app.get("/callback", function (req, res) {
@@ -408,55 +522,7 @@ app.get("/callback", function (req, res) {
         return;
       }
 
-      await updateTracks(null, accessToken, id, playlistId, discordId);
-
-      let timeout = setInterval(() => {
-        axios
-          .post(
-            "https://accounts.spotify.com/api/token",
-            new URLSearchParams({
-              refresh_token: refreshToken ?? "",
-              redirect_uri: redirectUri,
-              grant_type: "refresh_token",
-            }).toString(),
-            {
-              headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-                Authorization:
-                  "Basic " +
-                  new (Buffer as any).from(
-                    clientId + ":" + clientSecret
-                  ).toString("base64"),
-              },
-            }
-          )
-          .then(async (response) => {
-            accessToken = response.data.access_token;
-            refreshToken =
-              response.data.refresh_token === undefined
-                ? refreshToken
-                : response.data.refresh_token;
-            await updateTracks(
-              timeout,
-              accessToken,
-              id,
-              playlistId!,
-              discordId
-            );
-          })
-          .catch((error) => {
-            console.error(`${id}: Authorisation error ${error}`);
-            clearInterval(timeout);
-
-            res.status(401).send("Authorisation error");
-            if (discordId !== null)
-              discordClient.users.fetch(discordId).then((user) => {
-                user.send(
-                  `Looks like there was an authorisation problem :( **Maybe try authorising again?** ${hostUrl}/authorise?discord=${discordId}`
-                );
-              });
-          });
-      }, oneMinute * 15);
+      scrobble(id, playlistId, discordId, accessToken, refreshToken, res);
 
       res.send("Successfully authorised");
       if (discordId !== null)
@@ -531,22 +597,24 @@ fs.readdir("/user_data", (err, files) => {
     // Read the content of each file
     fs.readFile(filePath, "utf8", (err, data) => {
       if (err) {
-        console.error("Error reading file:", err);
         return;
       }
 
-      // Extract discordId from file content
-      const discordId: string = JSON.parse(data).discord;
-      if (!discordId) {
+      const parsed = JSON.parse(data);
+      if (!parsed) {
         console.error("Error parsing file:", data);
         return;
       }
 
-      discordClient.users.fetch(discordId).then((user) => {
-        user.send(
-          `I've just had to restart :/ **Could you authorise me again?** ${hostUrl}/authorise?discord=${discordId}`
-        );
-      });
+      // Extract discordId from file content
+      const discordId: string | null = parsed.discord;
+
+      const accessToken = parsed.access;
+      const refreshToken = parsed.refresh;
+      const playlistId = parsed.playlist;
+      const id = file.split(".")[0];
+
+      scrobble(id, playlistId, discordId, accessToken, refreshToken, null);
     });
   });
 });
