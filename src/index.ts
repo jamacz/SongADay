@@ -56,11 +56,17 @@ discordClient.login(discordToken);
 
 const oneDay = 1000 * 60 * 60 * 24;
 
-function getDayOfYear(timestamp: number): number {
+function getDayOfYear(timestamp: number, year: number): number {
   const date = new Date(timestamp);
-  return Math.floor(
-    (timestamp - new Date(date.getUTCFullYear(), 0, 0).getTime()) / oneDay
-  );
+  const maxDate = new Date(year + 1, 0, 0);
+
+  if (maxDate.getTime() <= date.getTime()) {
+    return Math.floor(
+      (maxDate.getTime() - new Date(year, 0, 0).getTime()) / oneDay
+    );
+  }
+
+  return Math.floor((timestamp - new Date(year, 0, 0).getTime()) / oneDay);
 }
 
 function getMaxIndex(arr: { [key: string]: number }): number | null {
@@ -125,6 +131,8 @@ async function updateTracks(
   let lastTime = 0;
   let next: string | null = null;
 
+  const cutoff = Date.parse("2025-01-01T00:00:00");
+
   while (!boundaryPassed) {
     const url: string =
       next === null
@@ -177,6 +185,10 @@ async function updateTracks(
       if (date > lastTime) {
         lastTime = date;
       }
+
+      if (date >= cutoff) {
+        continue;
+      }
       if (date <= tracks.lastUpdated) {
         boundaryPassed = true;
         continue;
@@ -193,7 +205,7 @@ async function updateTracks(
       }
       oldTrack.total++;
 
-      const day = getDayOfYear(date).toString();
+      const day = getDayOfYear(date, 2024).toString();
       if (oldTrack.daily[day] === undefined) {
         oldTrack.daily[day] = 0;
       }
@@ -205,7 +217,7 @@ async function updateTracks(
 
   tracks.lastUpdated = lastTime;
 
-  if (tracks.lastUpdated >= Date.parse("2025-01-01T00:00:00")) {
+  if (tracks.lastUpdated >= cutoff) {
     if (timeout !== null) clearInterval(timeout);
 
     if (discordId !== null)
@@ -214,6 +226,8 @@ async function updateTracks(
           `It's the end of Song A Day 2024 - happy new year!\nWatch the discord server for updates about Song A Day 2025 👀`
         );
       });
+
+    tracks.lastUpdated = cutoff;
   }
 
   fs.writeFile(`${volumeName}/${id}.json`, JSON.stringify(tracks), (err) => {
@@ -222,7 +236,7 @@ async function updateTracks(
     }
   });
 
-  const nDays = getDayOfYear(Date.now());
+  const nDays = getDayOfYear(Date.now(), 2024);
 
   const sortedTracks = Object.entries(tracks.tracks)
     .map(
