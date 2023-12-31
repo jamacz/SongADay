@@ -169,7 +169,6 @@ async function updateTracks(
       if (date > lastTime) {
         lastTime = date;
       }
-      console.log(date, tracks.lastUpdated);
       if (date <= tracks.lastUpdated) {
         boundaryPassed = true;
         continue;
