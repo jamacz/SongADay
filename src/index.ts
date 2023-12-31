@@ -102,7 +102,7 @@ async function updateTracks(
 
   await (function (): Promise<void> {
     return new Promise((resolve, reject) => {
-      fs.readFile(`info/${id}.json`, "utf8", (err, data) => {
+      fs.readFile(`/user_data/${id}.json`, "utf8", (err, data) => {
         if (err) {
           resolve();
         } else {
@@ -208,11 +208,7 @@ async function updateTracks(
       });
   }
 
-  if (!fs.existsSync("info")) {
-    fs.mkdirSync("info");
-  }
-
-  fs.writeFile(`info/${id}.json`, JSON.stringify(tracks), (err) => {
+  fs.writeFile(`/user_data/${id}.json`, JSON.stringify(tracks), (err) => {
     if (err) {
       console.error(`${id}: Couldn't write to file ${err}`);
     }
@@ -356,10 +352,10 @@ app.get("/callback", function (req, res) {
 
       let playlistId: string | null = null;
 
-      if (fs.existsSync(`info/${id}.json`)) {
+      if (fs.existsSync(`/user_data/${id}.json`)) {
         await (function (): Promise<void> {
           return new Promise<void>((resolve, reject) => {
-            fs.readFile(`info/${id}.json`, "utf8", (err, data) => {
+            fs.readFile(`/user_data/${id}.json`, "utf8", (err, data) => {
               if (err) {
                 console.error(`${id}: Couldn't read file ${err}`);
                 resolve();
@@ -522,7 +518,7 @@ function pingDiscordUser(discordId: string) {
 }
 
 // Read files in the info directory
-fs.readdir("info", (err, files) => {
+fs.readdir("/user_data", (err, files) => {
   if (err) {
     console.error("Error reading directory:", err);
     return;
@@ -530,7 +526,7 @@ fs.readdir("info", (err, files) => {
 
   // Iterate over each file
   files.forEach((file) => {
-    const filePath = `info/${file}`;
+    const filePath = `/user_data/${file}`;
 
     // Read the content of each file
     fs.readFile(filePath, "utf8", (err, data) => {
