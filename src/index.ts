@@ -73,7 +73,7 @@ function getMaxIndex(arr: { [key: string]: number }): number | null {
   let max = null as number | null;
   let maxIndex = null as number | null;
   for (let [key, value] of Object.entries(arr)) {
-    if (max === null || value > max) {
+    if ((max === null || value > max) && key !== "0") {
       max = value;
       maxIndex = parseInt(key);
     }
