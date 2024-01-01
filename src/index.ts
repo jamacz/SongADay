@@ -129,6 +129,15 @@ async function updateTracks(
     });
   })();
 
+  // temporary cleanup of new year's eve listens
+  // TODO: remove this
+  for (let [uri, track] of Object.entries(tracks.tracks)) {
+    if (track.daily["0"] !== undefined) {
+      track.total -= track.daily["0"];
+      delete track.daily["0"];
+    }
+  }
+
   let boundaryPassed = false;
   let lastTime = 0;
   let next: string | null = null;
@@ -208,10 +217,6 @@ async function updateTracks(
           total: 0,
           daily: {},
         };
-      }
-      if (oldTrack.daily["0"] !== undefined) {
-        oldTrack.total -= oldTrack.daily["0"];
-        delete oldTrack.daily["0"];
       }
       oldTrack.total++;
 
