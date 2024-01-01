@@ -58,22 +58,24 @@ const oneDay = 1000 * 60 * 60 * 24;
 
 function getDayOfYear(timestamp: number, year: number): number {
   const date = new Date(timestamp);
-  const maxDate = new Date(year + 1, 0, 0);
+  const maxDate = new Date(year + 1, 0, 1);
 
   if (maxDate.getTime() <= date.getTime()) {
-    return Math.floor(
-      (maxDate.getTime() - new Date(year, 0, 0).getTime()) / oneDay
+    return (
+      Math.floor(
+        (maxDate.getTime() - new Date(year, 0, 1).getTime()) / oneDay
+      ) + 1
     );
   }
 
-  return Math.floor((timestamp - new Date(year, 0, 0).getTime()) / oneDay);
+  return Math.floor((timestamp - new Date(year, 0, 0).getTime()) / oneDay) + 1;
 }
 
 function getMaxIndex(arr: { [key: string]: number }): number | null {
   let max = null as number | null;
   let maxIndex = null as number | null;
   for (let [key, value] of Object.entries(arr)) {
-    if ((max === null || value > max) && key !== "0") {
+    if (max === null || value > max) {
       max = value;
       maxIndex = parseInt(key);
     }
@@ -109,7 +111,7 @@ async function updateTracks(
     access: accessToken,
     refresh: refreshToken,
     tracks: {},
-    lastUpdated: Date.parse("2024-01-01T00:00:00"),
+    lastUpdated: 0,
   };
 
   await (function (): Promise<void> {
@@ -131,7 +133,8 @@ async function updateTracks(
   let lastTime = 0;
   let next: string | null = null;
 
-  const cutoff = Date.parse("2025-01-01T00:00:00");
+  const earliest = Date.parse("2024-01-01T00:00:00");
+  const latest = Date.parse("2025-01-01T00:00:00");
 
   while (!boundaryPassed) {
     const url: string =
@@ -186,7 +189,10 @@ async function updateTracks(
         lastTime = date;
       }
 
-      if (date >= cutoff) {
+      if (date >= latest) {
+        continue;
+      }
+      if (date < earliest) {
         continue;
       }
       if (date <= tracks.lastUpdated) {
@@ -203,6 +209,10 @@ async function updateTracks(
           daily: {},
         };
       }
+      if (oldTrack.daily["0"] !== undefined) {
+        oldTrack.total -= oldTrack.daily["0"];
+        delete oldTrack.daily["0"];
+      }
       oldTrack.total++;
 
       const day = getDayOfYear(date, 2024).toString();
@@ -215,9 +225,10 @@ async function updateTracks(
     }
   }
 
-  tracks.lastUpdated = lastTime;
+  tracks.lastUpdated =
+    tracks.lastUpdated > lastTime ? tracks.lastUpdated : lastTime;
 
-  if (tracks.lastUpdated >= cutoff) {
+  if (tracks.lastUpdated >= latest) {
     if (timeout !== null) clearInterval(timeout);
 
     if (discordId !== null)
@@ -227,7 +238,7 @@ async function updateTracks(
         );
       });
 
-    tracks.lastUpdated = cutoff;
+    tracks.lastUpdated = latest;
   }
 
   fs.writeFile(`${volumeName}/${id}.json`, JSON.stringify(tracks), (err) => {
