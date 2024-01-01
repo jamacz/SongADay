@@ -68,7 +68,7 @@ function getDayOfYear(timestamp: number, year: number): number {
     );
   }
 
-  return Math.floor((timestamp - new Date(year, 0, 0).getTime()) / oneDay) + 1;
+  return Math.floor((timestamp - new Date(year, 0, 1).getTime()) / oneDay) + 1;
 }
 
 function getMaxIndex(arr: { [key: string]: number }): number | null {
