@@ -73,14 +73,18 @@ function getDayOfYear(timestamp: number, year: number): number {
 
 function getMaxIndex(arr: { [key: string]: number }): number | null {
   let max = null as number | null;
-  let maxIndex = null as number | null;
+  let maxIndex: number[] = [];
   for (let [key, value] of Object.entries(arr)) {
     if (max === null || value > max) {
       max = value;
-      maxIndex = parseInt(key);
+      maxIndex = [parseInt(key)];
+    } else if (value === max) {
+      maxIndex.push(parseInt(key));
     }
   }
-  return maxIndex;
+  return maxIndex.length === 0
+    ? null
+    : maxIndex[Math.floor(maxIndex.length / 2)];
 }
 
 const oneMinute = 1000 * 60;
