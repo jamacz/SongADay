@@ -600,14 +600,6 @@ app.listen(port, function () {
   console.log(`App listening on port ${port}!`);
 });
 
-// Function to ping Discord user by discordId
-function pingDiscordUser(discordId: string) {
-  const user = discordClient.users.cache.get(discordId);
-  if (user) {
-    user.send("Hello! You have been pinged.");
-  }
-}
-
 // Read files in the info directory
 fs.readdir(`${volumeName}`, (err, files) => {
   if (err) {
