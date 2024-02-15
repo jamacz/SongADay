@@ -104,6 +104,7 @@ async function updateTracks(
     refresh: string;
     tracks: {
       [id: string]: {
+        name?: string;
         total: number;
         daily: { [day: string]: number };
       };
@@ -157,6 +158,7 @@ async function updateTracks(
             played_at: string;
             track: {
               uri: string;
+              name: string;
             };
           }[];
           next: string | null;
@@ -209,6 +211,7 @@ async function updateTracks(
       let oldTrack = tracks.tracks[uri];
       if (oldTrack === undefined) {
         oldTrack = {
+          name: item.track.name,
           total: 0,
           daily: {},
         };
