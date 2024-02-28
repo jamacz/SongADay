@@ -71,6 +71,26 @@ function getDayOfYear(timestamp: number, year: number): number {
   return Math.floor((timestamp - new Date(year, 0, 1).getTime()) / oneDay) + 1;
 }
 
+function getDaysInYear(year: number): number {
+  const maxDate = new Date(year + 1, 0, 1);
+
+  return (
+    Math.floor((maxDate.getTime() - new Date(year, 0, 1).getTime()) / oneDay) +
+    1
+  );
+}
+
+function getFirstListen(arr: { [key: string]: number }): number {
+  let minIndex: number = Infinity;
+  for (let [key, value] of Object.entries(arr)) {
+    let index = parseInt(key);
+    if (index < minIndex) {
+      minIndex = index;
+    }
+  }
+  return minIndex;
+}
+
 function getMaxIndex(arr: { [key: string]: number }): number | null {
   let max = null as number | null;
   let maxIndex: number[] = [];
@@ -251,16 +271,18 @@ async function updateTracks(
   });
 
   const nDays = getDayOfYear(Date.now(), 2024);
+  const nDaysInYear = getDaysInYear(2024);
 
   const sortedTracks = Object.entries(tracks.tracks)
-    .map(
-      ([uri, track]) =>
-        [uri, track.total, getMaxIndex(track.daily) ?? Infinity] as [
-          string,
-          number,
-          number
-        ]
-    )
+    .map(([uri, track]) => {
+      let firstListen = getFirstListen(track.daily) - 1;
+      return [
+        uri,
+        (nDaysInYear - firstListen) *
+          (track.total / Math.max(nDays - firstListen, 1)),
+        getMaxIndex(track.daily) ?? Infinity,
+      ] as [string, number, number];
+    })
     .sort(([, a], [, b]) => b - a)
     .slice(0, nDays)
     .sort(([, , a], [, , b]) => a - b);
