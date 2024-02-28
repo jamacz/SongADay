@@ -276,6 +276,9 @@ async function updateTracks(
   const sortedTracks = Object.entries(tracks.tracks)
     .map(([uri, track]) => {
       let firstListen = getFirstListen(track.daily) - 1;
+      if (firstListen == Infinity) {
+        firstListen = 0;
+      }
       return [
         uri,
         (nDaysInYear - firstListen) *
