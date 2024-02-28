@@ -282,7 +282,7 @@ async function updateTracks(
       return [
         uri,
         (nDaysInYear - firstListen) *
-          (track.total / Math.max(nDays - firstListen, 1)),
+          (track.total / Math.max(nDays * 2 - firstListen, 1)),
         getMaxIndex(track.daily) ?? Infinity,
       ] as [string, number, number];
     })
